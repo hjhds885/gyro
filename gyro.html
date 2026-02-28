@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+</head>
+<body>
+<button onclick="start()">Start Gyro</button>
+
+<script>
+const client = mqtt.connect("wss://broker.hivemq.com:8884/mqtt");
+
+function start() {
+    DeviceMotionEvent.requestPermission().then(response => {
+        if (response == 'granted') {
+            window.addEventListener('deviceorientation', function(event) {
+                let data = event.beta.toFixed(2);
+                client.publish("makoto/phone/gyro", data);
+            });
+        }
+    });
+}
+</script>
+</body>
+</html>
