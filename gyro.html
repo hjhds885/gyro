@@ -5,21 +5,53 @@
 <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
 </head>
 <body>
-<button onclick="start()">Start Gyro</button>
+<button onclick="start()">Start Gyro2</button>
 
 <script>
-const client = mqtt.connect("wss://broker.hivemq.com:8884/mqtt");
+let client;
+let sending = false;
 
-function start() {
-    DeviceMotionEvent.requestPermission().then(response => {
-        if (response == 'granted') {
-            window.addEventListener('deviceorientation', function(event) {
-                let data = event.beta.toFixed(2);
-                client.publish("makoto/phone/gyro", data);
-            });
-        }
+function connectMQTT() {
+    client = mqtt.connect("wss://broker.hivemq.com:8884/mqtt");
+
+    client.on("connect", function () {
+        console.log("MQTT connected");
     });
 }
+
+function startGyro() {
+    if (typeof DeviceMotionEvent.requestPermission === "function") {
+        DeviceMotionEvent.requestPermission().then(response => {
+            if (response === "granted") {
+                beginSending();
+            }
+        });
+    } else {
+        beginSending();
+    }
+}
+
+function beginSending() {
+    if (sending) return;
+    sending = true;
+
+    window.addEventListener("devicemotion", function(event) {
+        if (!sending) return;
+
+        const x = event.rotationRate.alpha || 0;
+        const y = event.rotationRate.beta || 0;
+        const z = event.rotationRate.gamma || 0;
+
+        const payload = JSON.stringify({
+            x: x,
+            y: y,
+            z: z
+        });
+
+        client.publish("gyro/data", payload);
+    });
+}
+    
 </script>
 </body>
 </html>
