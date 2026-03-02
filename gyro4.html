@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+<style>
+body { font-family: sans-serif; text-align:center; }
+button { font-size:20px; margin:10px; padding:10px; }
+.box { border:1px solid #ccc; margin:10px; padding:10px; }
+</style>
+</head>
+<body>
+
+<h2>📱 Gyro + MQTT Monitor</h2>
+
+<button onclick="startGyro()">Start Gyro</button>
+<button onclick="stopGyro()">Stop Gyro</button>
+
+<div class="box">
+<h3>Gyro送信値</h3>
+X: <span id="gx">0</span><br>
+Y: <span id="gy">0</span><br>
+Z: <span id="gz">0</span>
+</div>
+
+<div class="box">
+<h3>Picoから受信</h3>
+<div id="mqttMessages">---</div>
+</div>
+
+<script>
+let client;
+let sending = false;
+let latestData = {x:0,y:0,z:0};
+
+// ===== 設定 =====
+const broker = "wss://broker.hivemq.com:8884/mqtt";
+const topicGyro  = "makoto/phone/gyro";
+const topicPico  = "makoto/pico/temp";   // 表示したいトピック
+const topicPico  = "makoto/pico/hum";   // 表示したいトピック
+const topicPico  = "makoto/pico/pres";   // 表示したいトピック
+const topicPico  = "makoto/pico/cur";   // 表示したいトピック
+const topicPico  = "makoto/pico/lux";   // 表示したいトピック
+const topicPico  = "makoto/pico/servo";   // 表示したいトピック
+const topicPico  = "makoto/pico/control";   // 表示したいトピック
+//client.subscribe("makoto/pico/#");
+
+// ===== MQTT接続 =====
+function connectMQTT() {
+    client = mqtt.connect(broker, {
+        clientId: "phone_" + Math.random().toString(16).substr(2,8),
+        clean: true,
+        reconnectPeriod: 1000
+    });
+
+    client.on("connect", function () {
+        console.log("MQTT connected");
+        client.subscribe(topicPico);
+    });
+
+    client.on("message", function (topic, message) {
+        document.getElementById("mqttMessages").innerText =
+            topic + " : " + message.toString();
+    });
+
+    client.on("error", function (err) {
+        console.log("MQTT error:", err);
+    });
+}
+
+// ===== Gyro開始 =====
+function startGyro() {
+
+    if (!client || !client.connected) {
+        alert("MQTT not connected yet");
+        return;
+    }
+
+    if (typeof DeviceMotionEvent.requestPermission === "function") {
+        DeviceMotionEvent.requestPermission().then(response => {
+            if (response === "granted") {
+                beginSending();
+            } else {
+                alert("Permission denied");
+            }
+        });
+    } else {
+        beginSending();
+    }
+}
+
+function stopGyro() {
+    sending = false;
+}
+
+function beginSending() {
+
+    if (sending) return;
+    sending = true;
+
+    window.addEventListener("devicemotion", function(event) {
+
+        if (!event.rotationRate) return;
+
+        latestData.x = event.rotationRate.alpha || 0;
+        latestData.y = event.rotationRate.beta  || 0;
+        latestData.z = event.rotationRate.gamma || 0;
+
+        document.getElementById("gx").innerText = latestData.x.toFixed(1);
+        document.getElementById("gy").innerText = latestData.y.toFixed(1);
+        document.getElementById("gz").innerText = latestData.z.toFixed(1);
+    });
+
+    setInterval(function(){
+        if (sending && client.connected) {
+            client.publish(topicGyro, JSON.stringify(latestData));
+        }
+    }, 100); // 100ms送信
+}
+
+// ===== 初期化 =====
+connectMQTT();
+
+</script>
+</body>
+</html>
