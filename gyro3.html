@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+</head>
+<body>
+
+<button onclick="startGyro()">Start Gyro</button>
+
+<script>
+let client;
+let sending = false;
+let latestData = {x:0,y:0,z:0};
+
+// HiveMQ WebSocket
+const broker = "wss://broker.hivemq.com:8884/mqtt";
+const topic  = "makoto/phone/gyro";
+
+// MQTT接続
+function connectMQTT() {
+    client = mqtt.connect(broker, {
+        clientId: "phone_" + Math.random().toString(16).substr(2,8),
+        clean: true,
+        reconnectPeriod: 1000
+    });
+
+    client.on("connect", function () {
+        console.log("MQTT connected");
+    });
+
+    client.on("error", function (err) {
+        console.log("MQTT error:", err);
+    });
+}
+
+// ジャイロ開始
+function startGyro() {
+
+    if (!client || !client.connected) {
+        alert("MQTT not connected yet");
+        return;
+    }
+
+    if (typeof DeviceMotionEvent.requestPermission === "function") {
+        DeviceMotionEvent.requestPermission().then(response => {
+            if (response === "granted") {
+                beginSending();
+            } else {
+                alert("Permission denied");
+            }
+        });
+    } else {
+        beginSending();
+    }
+}
+
+function beginSending() {
+
+    if (sending) return;
+    sending = true;
+
+    window.addEventListener("devicemotion", function(event) {
+        if (!event.rotationRate) return;
+
+        latestData.x = event.rotationRate.alpha || 0;
+        latestData.y = event.rotationRate.beta  || 0;
+        latestData.z = event.rotationRate.gamma || 0;
+    });
+
+    // 100msごと送信（安定版）
+    setInterval(function(){
+        if (sending && client.connected) {
+            client.publish(topic, JSON.stringify(latestData));
+        }
+    }, 100);
+}
+
+// ページ読み込み時に接続
+connectMQTT();
+
+</script>
+</body>
+</html>
