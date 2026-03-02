@@ -10,13 +10,21 @@
 <script>
 let client;
 let sending = false;
+let latestData = {x:0,y:0,z:0};
 
+// HiveMQ WebSocket
+const broker = "wss://broker.hivemq.com:8884/mqtt";
+const topic  = "gyro/data";
+    
 function connectMQTT() {
-    client = mqtt.connect("wss://broker.hivemq.com:8884/mqtt");
+    client = mqtt.connect(broker);
 
     client.on("connect", function () {
         console.log("MQTT connected");
     });
+    client.on("error", function (err) {
+        console.log("MQTT error:", err);
+    });    
 }
 
 function startGyro() {
@@ -24,6 +32,8 @@ function startGyro() {
         DeviceMotionEvent.requestPermission().then(response => {
             if (response === "granted") {
                 beginSending();
+            } else {
+                alert("Permission denied");
             }
         });
     } else {
@@ -35,22 +45,22 @@ function beginSending() {
     if (sending) return;
     sending = true;
 
+    // センサー値を常に更新
     window.addEventListener("devicemotion", function(event) {
-        if (!sending) return;
-
-        const x = event.rotationRate.alpha || 0;
-        const y = event.rotationRate.beta || 0;
-        const z = event.rotationRate.gamma || 0;
-
-        const payload = JSON.stringify({
-            x: x,
-            y: y,
-            z: z
-        });
-
-        client.publish("gyro/data", payload);
+        latestData.x = event.rotationRate?.alpha || 0;
+        latestData.y = event.rotationRate?.beta || 0;
+        latestData.z = event.rotationRate?.gamma || 0;
     });
+
+    // 50msごとに送信（20Hz）
+    setInterval(function(){
+        if (sending && client.connected) {
+            client.publish(topic, JSON.stringify(latestData));
+        }
+    }, 50);
 }
+    
+connectMQTT();
     
 </script>
 </body>
