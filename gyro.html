@@ -5,7 +5,7 @@
 <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
 </head>
 <body>
-<button onclick="start()">Start Gyro2</button>
+<button onclick="startGyro()">Start Gyro2</button>
 
 <script>
 let client;
@@ -52,12 +52,12 @@ function beginSending() {
         latestData.z = event.rotationRate?.gamma || 0;
     });
 
-    // 50msごとに送信（20Hz）
+    // 100msごとに送信（10Hz）
     setInterval(function(){
         if (sending && client.connected) {
             client.publish(topic, JSON.stringify(latestData));
         }
-    }, 50);
+    }, 100);
 }
     
 connectMQTT();
