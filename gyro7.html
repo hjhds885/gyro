@@ -36,7 +36,7 @@ let latestData = {x:0,y:0,z:0};
 
 // ===== 設定 =====
 const broker = "wss://broker.hivemq.com:8884/mqtt";
-//const topicGyro  = "makoto/phone/gyro";
+const topicGyro2  = "makoto/phone/gyro";
 const topicGyro = "makoto/pico/servo";
 const topicSubscribe  = "makoto/pico/#";
 
@@ -144,7 +144,7 @@ function beginSending() {
 
     setInterval(function(){
         if (sending && client.connected) {
-            client.publish(topicGyro, JSON.stringify(latestData));
+            client.publish(topicGyro2, JSON.stringify(latestData));
         }
     }, 100);  // 100ms送信
 }
