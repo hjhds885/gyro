@@ -14,7 +14,7 @@ let latestData = {x:0,y:0,z:0};
 
 // HiveMQ WebSocket
 const broker = "wss://broker.hivemq.com:8884/mqtt";
-const topic  = "gyro/data";
+const topic  = "makoto/phone/gyro";
     
 function connectMQTT() {
     client = mqtt.connect(broker);
